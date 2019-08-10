@@ -15,7 +15,7 @@
 </template>
 <script>
 import RatingSelector from "./RatingSelector";
-//import MockMarketPlace from "../mocks/OfflineMarketplace";
+import MockMarketPlace from "../mocks/OfflineMarketplace";
 import AvgLoanAmount from "./AvgLoanAmount";
 
 export default {
@@ -36,18 +36,16 @@ export default {
       .get(`${process.env.VUE_APP_API}/loans/marketplace`)
       .then(res => {
         this.marketplace = res.data;
-        this.allRatings = [
-          ...new Set(this.marketplace.map(item => item.rating))
-        ].sort();
       })
       .catch(error => {
         console.error(error);
+        this.marketplace = MockMarketPlace.MARKETPLACE;
+      })
+      .finally(() => {
+        this.allRatings = [
+          ...new Set(this.marketplace.map(item => item.rating))
+        ].sort();
       });
-    /*
-    this.marketplace = MockMarketPlace.MARKETPLACE;
-    this.allRatings = [
-      ...new Set(this.marketplace.map(item => item.rating))
-    ].sort();*/
   },
   methods: {
     computeAvgLoan(currentRate) {
