@@ -1,29 +1,52 @@
 <template>
   <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
+    <Header />
+    <div class="appContainer">
+      <RatingCalculator class="center" />
     </div>
-    <router-view />
   </div>
 </template>
 
-<style lang="less">
-#app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
+<script>
+import Header from "./components/layout/Header";
+import RatingCalculator from "./components/RatingCalculator";
+export default {
+  name: "App",
+  components: {
+    Header,
+    RatingCalculator
+  }
+};
+</script>
+
+<style>
+html,
+#app,
+body {
+  height: 100%;
+}
+body {
+  font-family: Roboto Slab, serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+  background-color: #f6f6f6;
+  display: flex;
+  margin: 0;
+  height: 100%;
 }
-#nav {
-  padding: 30px;
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-    &.router-link-exact-active {
-      color: #42b983;
-    }
-  }
+#app {
+  width: 100%;
+}
+.appContainer {
+  height: 90%;
+  padding: 0;
+  margin: 0;
+  display: -webkit-box;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

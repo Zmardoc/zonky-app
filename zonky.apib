@@ -1,0 +1,1146 @@
+FORMAT: 1A
+HOST: https://api.zonky.cz
+
+# Zonky REST API
+
+The Zonky REST API provides programmatic access to Zonky data in JSON format.
+
+We know that API exposed on _api.zonky.cz_ endpoint is public, but please be aware that the part of the API
+documented here is a subset of our API we ourselves consider _public_. We expect someone else may use this API and therefore we
+try to keep it backward compatible or at least let you know about upcoming changes in advance.
+We may not gurantee anything since the API is primarily used by Zonky itself, but you have our promise we will do our best to not break your work.
+
+# Rules of thumb
+
+## Let us know
+
+Please let us know you're building something on top of our API. Just drop an e-mail to [admin@zonky.cz](mailto:admin@zonky.cz). Why?
+We can promote your application to thousands of customers, let you know in advance about upcoming changes or just to know about you.
+
+## Use User-Agent
+
+Every HTTP client should send the User-Agent header according to [HTTP/1.1 semantics and content](https://tools.ietf.org/html/rfc7231#section-5.5.3).
+The header should contain application, version and contact information (URL).
+
+* the User-Agent pattern: ```${application}/${version} (${url})```
+* the User-Agent example: ```Foo/1.0 (https://github.com/john.doe/foo)```
+
+The User-Agent header helps us in many areas. We may use this header to analyze API changes impact and so on.
+
+## Secure access
+Beware, the dark side is listening. Use secure transport protocol (HTTPS) when accessing Zonky.
+
+## User credentials
+It's prohibited to ask for credentials (username, password) of other users. It's a security issue and a violation of the
+[Zonky terms & conditions](https://zonky.cz/downloads/Zonky_Pravidla_portalu.pdf).
+
+## API Quota, limits, rate limiting, QoS
+And other ugly words may follow. Please take into account that even our system has limits. Do to this API as you would have others to do to your own API.
+
+Currently, there is an API Throttle functionality that forbids users to make huge amount of requests per time interval. The algorithm used is [Leaky Bucket](https://en.wikipedia.org/wiki/Leaky_bucket) that refreshes one token every second with a capacity of 500 tokens.
+
+It means that if your robot makes one request per seconds on average, you're fine. You can choose whether it is making one request every second, 500 requests every 500 seconds on something in between. These numbers can be changed anytime so make your client aware of the throttled HTTP response.
+
+In case of client hitting the limit, the API responds with HTTP status code 429 - Too Many Requests.
+
+If you're trying to accomplish any use case and the API Throttling functionality is preventing you from success, please contact us and we'll try to figure something out.
+
+## Bugs and improvements
+If you find any bug in our API please use [admin@zonky.cz](mailto:admin@zonky.cz). Feel free to ask questions or propose improvements regarding the API via [Zonky API GitHub project](https://github.com/zonkyio/zonky-api) or [admin@zonky.cz](mailto:admin@zonky.cz).
+
+
+# API Versions and changes
+
+## 0.19.0
+* First version available for public audience.
+
+## 0.25.0
+* Investing endpoints reference.
+
+## 0.29.0
+* Unified default ordering of loans on marketplace for authenticated and anonymous users.
+
+## 0.46.0
+* Updated documentation of the loan response.
+
+## 0.54.0
+* Added Secondary marketplace resources.
+
+## 0.58.0
+* Partial response - possible to filter fields in json responses
+
+## 0.76.0
+* Allowing to filter `/users/me/wallet/transactions` resource by a loan ID
+
+## 0.87.0
+* Added resource related to insurance
+
+## 0.91.0
+* Allowing to filter `/loans/marketplace` resource to show only insured/uninsured loans
+
+## 0.124.0
+* Changes to investment endpoints and new fields related to reservations
+
+## 0.129.0
+* New fields in marketplace endpoints (preparation for replacing ratings with interest rates)
+
+# OAuth 2 authentication
+
+Zonky users are identified using [OAuth 2.0](http://oauth.net/2/) protocol. At the moment we support following OAuth 2 grant types:
+
+* [Resource Owner Password Credentials Grant Flow ](https://tools.ietf.org/html/rfc6749#section-4.3) where user receives an access token and
+a refresh token in exchange for their username and password and
+* [Authorization Code Grant Flow ](https://tools.ietf.org/html/rfc6749#page-24) where client app obtains authorization code which is later
+exchanged for access token.
+
+In case you're going to create new application that is going to be used by other users, the Authorization Code Grant Flow should be used
+because that is the way how you can obtain a grant to user's account without knowing their credentials.
+
+In case you just want to play with the API you can use the Resource Owner Password Credentials Grant Flow
+using your own credentials, of course.
+
+In case your app does not have its web service (e.g. a simple mobile app) there is no URL we could redirect the user to providing you the Authorization Code. In this case you can use the Password Credentials Grant Flow as well. The point here is that your app does not send the credentials anywhere. They are just part of the mobile app installation in the user's device.
+
+**Acting** on **behalf** of other **users** by supplying their **credentials** is strictly **prohibited**. Applications violating this rule will be banned with no mercy.
+
+## Access token and refresh token
+To keep things as secure as possible you have to pay attention to the right usage of OAuth authentication protocol. The right way is to obtain
+an access token and a refresh token with user's credentials *on the first authentication request*. Retrieved access token has limited validity (advertised in the
+response). After its expiration you should retrieve a new one with a refresh token which has longer validity.
+
+## Authorization Code Grant Flow
+### Client onboarding
+Client application must obtain client credentials before it can use authorization code flow. To start onboarding process please send us email to oauth@zonky.cz
+with following details
+- application name
+- application description
+- requested scopes (list of scopes this app will need to operate)
+- redirect url ( target url where is user redirected after granting authorization code or in case of error) Url is verified for match except for params
+
+Zonky will evaluate your request and if everything is fine we will provide unique clientId and clientSecret for you. **ClientSecret is confidential** and should not
+be shared anywhere. Client id and client secret should be used in communication only between secured servers.
+
+### Authorization flow
+When client needs to connect to protected resource and hasn't valid access token it should redirect user to `oauth/authorize` endpoint( find details at endpoint description).
+If user is logged in and client app is not approved zonky will display consent page with some basic info about client app. If client application is already approved
+consent page is not displayed again and flow continues directly. After successful approval user is forwarded to redirect url with authorization code.
+
+Client app can use authorization code to retrieve access token by calling `oauth/token` endpoint. In some cases second factor authentication using SMS code can be required. 
+Authorization code can be used only once and expires after 5 min.
+After successful authorization client app can use access token and refresh token for calling secured api. When refresh token expires client app must initiate
+new authorization code flow to obtain access and refresh token.
+
+User can revoke application approval anytime and it will lead to immediate revocation of all tokens.
+
+### Scopes
+Currently we have only one scope, that will give client application all rights to access zonky. It will likely change in future and more detailed scopes will exists.
+| Scope name     | Description           |
+| :------------- |:-------------         |
+| SCOPE_APP_WEB  | Allow all actions with account |
+| SCOPE_FILE_DOWNLOAD | Allow download files ( exports, contracts) |
+| SCOPE_APP_BASIC_INFO | Allow to show only basic info about the user's account (/users/me/basic) |
+
+
+# Pagination, sorting and filtering
+All listing resources in this API stick to the same conventions of how to paginate, sort and filter data.
+
+## Pagination
+You can query for a subset of data provided by a resource using ```X-Page``` and ```X-Size``` headers. Numbering starts with ```0``` and reasonable defaults are set for cases when
+no headers are present in the request.
+
+Total number of records is indicated in the response with ```X-Total``` header.
+
+For example if you query a resource with a total of 40 records with headers ```X-Page: 0``` and ```X-Size: 20``` the API will return records ```0-19```
+and ```X-Total: 40``` header value.
+
+## Sorting
+You can sort output data by setting ```X-Order``` header in the request. As a value use list of field names separated by a comma ```,```.
+Putting ```-``` before the field name indicates descending order.
+
+For example:
+
++ ```X-Order: -interestRate,termInMonths``` retrieves list of loans with highest interest rate and shortest term on top
+
+## Filtering
+Resource records can be filtered by providing query parameters matching the following pattern: ```${fieldName}__${operationSuffix}=${filterValue}```.
+
+| Operation suffix        | Description           | Examples  |
+| :------------- |:-------------                                                                        |:-----|
+|  contains     | Retrieves object with property containing provided value (case-sensitive)             | ```?name__contains=foo``` |
+|  icontains    | Retrieves object with property containing provided value (case-insensitive)           | ```?name__icontains=foo``` |
+|  startswith   | Retrieves object with property starting with provided value (case-sensitive)          | ```?name__startswith=foo``` |
+|  istartswith  | Retrieves object with property starting with provided value (case-insensitive)        | ```?name__istartswith=foo``` |
+|  endswith      | Retrieves object with property ending with provided value (case-sensitive)            | ```?name__endswith=foo``` |
+|  iendswith     | Retrieves object with property ending with provided value (case-insensitive)          | ```?name__iendswith=foo```  |
+|  in           | Retrieves object if property is contained in provided list of values (case-sensitive) | ```?rating__in=["AAA","AA"]``` |
+|  eq           | Retrieves object if property equals to provided value (case-sensitive)                | ```?rating__eq=A``` |
+|  noteq        | Retrieves object if property not equals to provided value (case-sensitive)            | ```?rating__noteq=A``` |
+|  gt           | Retrieves object if property is greater than provided value                           | ```termInMonths__gt=24``` |
+|  gte          | Retrieves object if property is greater or equal to provided value                    | ```termInMonths__gte=24``` |
+|  gteornull    | Retrieves object if property is greater or equal to provided value or is null         | ```termInMonths__gteornull=24``` |
+|  lt           | Retrieves object if property is less than provided value                              | ```termInMonths__lt=24``` |
+|  lte          | Retrieves object if property is less or equal to provided value                       | ```termInMonths__lte=24``` |
+|  lteornull    | Retrieves object if property is less or equal to provided value or is null            | ```termInMonths__lteornull=24``` |
+|  containsall  | Retrieves object if property is collection of simple values (string, number) and contains all values in the provided list | ```listField__containsall=["value1","value2"]``` |
+|  containsany  | Retrieves object if property is collection of simple values (string, number) and contains any value from the provided list | ```listField__containsany=["value1","value2"]``` |
+
+## Data types
+When filtering with ```gt```, ```gte```, ```lt```, ```lte``` it is possible to use ISO-8601 [date](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_DATE) or [datetime](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_OFFSET_DATE_TIME) data type in format,
+for example ```datePublished__gt=2016-08-20T23:59:59.000+02:00``` or ```datePublished__lt=2016-08-20```. When no time zone offset is present in incoming data, API will use default platform time zone
+(```Europe/Prague```) for parsing.
+
+
+## Sorting and filtering restrictions
+Not all fields are available for sorting and filtering. In such cases you will be informed that your action is not allowed with a response ```400 Bad Request```
+and details in the response body:
+
+```json
+{
+  "error" : "invalid_filter",
+  "error_description" : "Filter or ordering property not allowed: amount",
+  "uuid" : "25f1f568-e8d1-4066-97a3-110e679dd6ee",
+  "property" : "amount",
+  "operation" : "X-Order"
+}
+```
+## Partial response
+To relieve network throughput, fields in json responses can be filtered out by providing query parameter ```fields``` with comma separated list of fields that you are interested in.
+
+There are two restrictions:
+* Some fields cannot be filtered out. Typically boolean values or sume numbers. There is no list of this values
+* Only 1st level fields can be filtered. Filtering inside nested json objects is not possible.
+
+Example:
+Request: ```GET http://api.zonky/loans/marketplace?fields=id,url```
+
+Response:
+```json
+[
+  {
+    "id": 123,
+    "url": "https://app.zonky.cz/loan/123"
+  },
+  {
+    "id": 456,
+    "url": "https://app.zonky.cz/loan/456"
+  }
+]
+```
+
+# Group OAuth
+
+## Authorize [/oauth/authorize?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&scope={scopes}&state={state}]
+Endpoint specification is based on oauth specification
+
+### Get authorization code [GET]
++ Parameters
+    + client_id (string) - ID of client app
+    + redirect_uri (string) - Callback url where user is forwarded with authorization code. Redirect uri host and path must match with redirect uri provided during onboarding process.
+    + scopes (string) - **Space** separated list of scopes.
+    + state (string) - Nonce value that will be returned when user is redirected back. Client should check, that state matches. This value is opaque for authorization server and client can send any value as long as it is unique for every request
+
++ Response 302
+    + Headers
+
+            Location: Redirect url with param `code` and `state`. In case of error `error` and optionally `error_code` is returned instead
+
+## Token [/oauth/token]
+
+Token authentication endpoint.
+
++ Model (application/json)
+
+    ```json
+    {
+        "access_token" : "c5f6b996-47aa-4c59-8fc7-8a03fcf5da9d",
+        "token_type" : "bearer",
+        "refresh_token" : "d33c18a7-cc94-4e35-9ac3-c67528a602f4",
+        "expires_in" : 299,
+        "scope" : "SCOPE_APP_WEB"
+    }
+    ```
+
+### Get access token [POST]
+
++ Request Authenticate a user with their credentials (application/x-www-form-urlencoded)
+
+    + Headers
+
+            Authorization: Basic d2ViOndlYg==
+
+    + Body
+
+            username=test&password=test&grant_type=password&scope=SCOPE_APP_WEB
+
++ Response 200
+
+    [Token][]
+    
++ Response 400
+
+    In this case second factor authentication is required.
+
+    + Body
+    
+        ```json
+        {
+            "error" : "invalid_grant",
+            "error_description" : "Multi-factor authentication is required",
+            "error_code" : "MFA_REQUIRED",
+            "mfa_token" : "c5f6b996-47aa-4c59-8fc7-8a03fcf5da9d"
+        }
+        ```
+
++ Request Authenticate a user using second factor (application/x-www-form-urlencoded)
+
+    + Headers
+
+            Authorization: Basic d2ViOndlYg==
+
+    + Body
+
+            username=test&password=test&grant_type=password&scope=SCOPE_APP_WEB&mfa_token=c5f6b996-47aa-4c59-8fc7-8a03fcf5da9d&sms_code=123456
+
++ Response 200
+
+    [Token][]
+    
++ Request Renew the access token with the refresh token (application/x-www-form-urlencoded)
+
+    + Headers
+
+            Authorization: Basic d2ViOndlYg==
+
+    + Body
+
+            refresh_token=d33c18a7-cc94-4e35-9ac3-c67528a602f4&grant_type=refresh_token&scope=SCOPE_APP_WEB
+
++ Response 200
+
+    [Token][]
+
++ Request Get access token with authorization code (application/x-www-form-urlencoded)
+
+    + Headers
+
+            Authorization: Basic base64 client credentials
+
+    + Body
+
+            scope=SCOPE_APP_WEB&grant_type=authorization_code&code=CODE&redirect_uri=https%3A%2F%2Fgoogle.com
+
++ Response 200
+
+    [Token][]
+
+# Group Marketplace
+
+## Marketplace [/loans/marketplace]
+
+Overview of loans on the marketplace.
+
+### GET
+
+Get loans on marketplace.
+
+Available sorting and filtering fields:
+
+| Field        | Sorting           | Filtering  |
+| :------------- |:-------------:|:-----:|
+|```datePublished```| YES| YES |
+|```interestRate```| YES| YES |
+|```covered```| YES| YES |
+|```termInMonths```| YES| YES |
+|```purpose```| YES| YES |
+|```rating```| YES| YES |
+|```incomes```| NO | YES |
+|```topped```| YES| YES |
+|```remainingInvestment```| YES| YES |
+|```nonReservedRemainingInvestment```| YES | YES |
+|```insuranceActive```| YES | YES |
+
++ Response 200 (application/json)
+
+    + Attributes (array[Loan])
+
+
+## Loan [/loans/{id}]
+
+Single loan detail.
+
++ Parameters
+
+    + id: 1 (integer) - ID of a loan
+
+### GET
+
+Get loan detail.
+
++ Response 200 (application/json)
+
+    + Attributes (Loan)
+
+
+## Loan investments [/loans/{id}/investments]
+
+Investments of the loan selected by ID.
+
++ Parameters
+
+    + id: 1 (integer) - ID of a loan
+
++ Model (application/json)
+
+    ```json
+    [
+      {
+        "id": 123456,
+        "firstAmount": 200,
+        "amount": 200,
+        "timeCreated": "2017-01-10T15:10:40.831+01:00",
+        "investorId": 1234,
+        "loanId": 66655,
+        "investorNickname": "Bob",
+        "status": "ACTIVE",
+        "additionalAmount": 0
+      },
+      {
+        "id": 987654,
+        "firstAmount": 1000,
+        "amount": 1000,
+        "timeCreated": "2017-02-12T15:44:26.951+01:00",
+        "investorId": 5678,
+        "loanId": 77788,
+        "investorNickname": "Tom",
+        "status": "ACTIVE",
+        "additionalAmount": 0
+      }
+    ]
+
+    ```
+
+### GET
+
+Get investmens for the loan. By default it returns all items. It is for backward compatibility.
+
+Available sorting fields:
+
+| Field        |
+| :-------------- |
+|```id```|
+|```firstAmount```|
+|```amount```|
+|```timeCreated```|
+|```investor.Id```|
+|```loan.Id```|
+|```investor.NickName```|
+|```status```|
+
++ Response 200
+
+    [Loan investments][]
+
+
+
+# Group Investing
+
+## Investment [/marketplace/investment]
+
+Make a new investment. Users can invest only within unreserved amount remaining to invest.
+
+### POST
+
+#### reCAPTCHA authorization
+
+All investments that are made withing first 120 seconds after a loan publication on the marketplace
+have to be authorized by [reCAPTCHA](https://www.google.com/recaptcha).
+
+The time before investing opens for all requests without authorization may change anytime in the future.
+
++ Request
+
+    + Headers
+
+            Content-Type: application/json
+            Authorization: Bearer 674e7f35-7aba-4cec-858c-f48861e9dc21
+
+    + Body
+
+        ```json
+        {
+              "amount" : 200,
+              "loanId" : 1,
+              "captcha_response" : "..."
+        }
+        ```
+
++ Response 200
+
++ Response 400
+
+    The input is invalid.
+
+    Possible error codes are:
+    * ```CAPTCHA_REQUIRED``` - Captcha verification is required
+    * ```insufficientBalance``` - The user cannot invest because of a low wallet balance.
+    * ```cancelled``` - The loan has been canceled
+    * ```withdrawn``` - The loan has been withdrawn by the borrower
+    * ```reservedInvestmentOnly``` - The user cannot invest without a reservation. The whole remaining investment is reserved for other users. See `remainingInvestment` and `reservedAmount`.
+    * ```overInvestment``` - The amount for investment is too high. See `remainingInvestment`.
+    * ```multipleInvestment``` - The user has already invested to this loan. Try increasing the investment instead.
+    * ```alreadyCovered``` - The whole loan amount has been already covered. See `remainingInvestment`.
+
+    + Body
+
+        ```json
+        {
+              "error" : "reservedInvestmentOnly"
+        }
+        ```
+
++ Response 403
+
+    Captcha verification was unsuccessful
+
+    + Body
+
+        ```json
+        {
+              "error" : "CAPTCHA_VERIFICATION_UNSUCCESSFUL",
+              "error_description" : "Captcha verification failed."
+        }
+        ```
+
+## Investment increase [/marketplace/investment/{investment}]
+
+Increase invested amount for an existing investment. Users can invest only within unreserved amount remaining to invest.
+
++ Parameters
+
+    + investment: 1 (integer) - ID of an investment
+
+### PATCH
+
+Increase existing investment.
+
++ Request
+
+    + Headers
+
+            Content-Type: application/json
+            Authorization: Bearer 674e7f35-7aba-4cec-858c-f48861e9dc21
+
+    + Body
+
+        ```json
+        {
+              "amount" : 200
+        }
+        ```
+
++ Response 200
+
+
++ Response 400
+
+    The input is invalid.
+
+    Possible error codes are:
+    * ```insufficientBalance``` - The user cannot invest because of a low wallet balance.
+    * ```cancelled``` - The loan has been canceled
+    * ```withdrawn``` - The loan has been withdrawn by the borrower
+    * ```reservedInvestmentOnly``` - The user cannot invest without a reservation. The whole remaining investment is reserved for other users. See `remainingInvestment` and `reservedAmount`.
+    * ```overInvestment``` - The amount for investment is too high. See `remainingInvestment`.
+    * ```increaseInvestmentNotExist``` - The user has not invested to the loan yet. Try investing first.
+    * ```alreadyCovered``` - The whole loan amount has been already covered. See `remainingInvestment`.
+
+    + Body
+
+        ```json
+        {
+              "error" : "reservedInvestmentOnly"
+        }
+        ```
+
+# Group Secondary marketplace
+
+## Getting a list of investor's investments [/users/me/investments]
+
+### List of my investments [GET]
+
+Get the list of investments that an investor has in his portfolio.
+
+Available sorting and filtering fields:
+
+| Field        | Sorting           | Filtering  | Description |
+| :------------- |:-------------:|:-----:|:-----:|
+|```id```| YES| YES | ID of an investment |
+|```timeCreated```| YES| YES | |
+|```timeModified```| YES| YES | |
+|```investor.firstName```| YES| YES | |
+|```investor.surname```| YES| YES | |
+|```status```| YES | YES `[ACTIVE|SOLD]`| Investment status |
+|```loan.status```| YES | YES `[SIGNED|COVERED|ACTIVE|PAID_OFF|PAID|STOPPED]`| Loan status |
+|```loan.unpaidLastInst```| YES| YES `[true|false]` | `true` if a loan has unpaid last instalment |
+|```smpInvestment.status```| YES | YES `[ACTIVE]`| SMP status (if an investment has been offered on the secondary marketplace) |
+|```ext.purchasePrice```| YES | YES | Purchase price (if an investment has been bought on the secondary marketplace) |
+|```ext.activeTo```| YES | YES | The date of sale on a secondary marketplace (if sold)  |
+
++ Response 200
+
+    Returns user's investments
+
+    + Attributes (array[Investment])
+
+## Investor selling his investments [/users/me/traded-investments]
+
+### Publishing investments [POST]
+
+Offer an investment for sale on the secondary marketplace.
+
++ Request
+
+    + Headers
+
+                Content-Type: application/json
+                Authorization: Bearer 674e7f35-7aba-4cec-858c-f48861e9dc21
+
+    + Attributes ([SMPPublishingRequest][])
+
++ Response 204
+
+    Investment has been successfully published on the secondary marketplace
+
+    + Body
+
++ Response 400
+
+    Investment cannot be published on secondary marketplace
+
+    + Attributes([SMPPublishingError][])
+
++ Response 408
+
+    Request timeout
+
+    + Body
+
+## Investor managing his existing offers [/users/me/traded-investments/{investmentId}]
+
++ Parameters
+
+    + investmentId (integer, `123`) - ID of an investment
+
+### Cancelling investment offers [DELETE]
+
+Take investment down from the secondary marketplace
+
++ Response 204
+
+    In case investment was successfully taken down from the secondary marketplace.
+
+    + Body
+
++ Response 410
+
+    In case investment could not be taken down due to reason described by `error`.
+
+    + Attributes([SMPCancelOfferError][])
+
+## Purchasing investments on secondary marketplace [/smp/investments]
+
+### Listing investments [GET]
+
+Get the list of investments that are available for purchase on the secondary marketplace.
+
+Available sorting and filtering fields:
+
+| Field        | Sorting           | Filtering  |
+| :------------- |:-------------:|:-----:|
+|```rating```| YES| YES |
+|```deadline```| YES| YES |
+|```remainingInstalmentCount```| YES| YES |
+|```remainingPrincipal```| YES| YES |
+|```purpose```| YES| YES |
+|```incomeType```| YES| YES |
+
++ Response 200
+
+    Returning list of found investments on secondary marketplace
+
+    + Attributes (array[SMPInvestment])
+
++ Response 408
+
+    Request timeout
+
+    + Body
+
+## SMP investment participations [/smp/investments/{id}/shares]
+
+At the moment it is not allowed to purchase only a part of offered investment. Investors have to buy the whole investment
+so there can be only 1 purchase per 1 offered investment. This may be eventually possible in the future and API is already
+prepared for this situation.
+
++ Parameters
+
+    + id: 1 (integer) - ID of an investment offer
+
+### Purchasing investments [POST]
+
+Purchase a share of an investment offer on the secondary marketplace
+
++ Request
+
+    + Attributes([SMPPurchaseRequest][])
+
++ Response 204
+
+    Successful purchase
+
+    + Body
+
++ Response 400
+
+    Cannot proceed with investment purchase
+
+    + Attributes([SMPPurchaseError][])
+
+
++ Response 404
+
+    Investment offer is not available (in some cases it is because the offer is already purchased by another investor)
+
+    + Body
+
++ Response 408
+
+    Request timeout
+
+    + Body
+
+# Group Wallet
+
+## User's wallet [/users/me/wallet]
+
+Get user's wallet.
+
+### GET
+
++ Request
+
+    + Headers
+
+            Content-Type: application/json
+            Authorization: Bearer 674e7f35-7aba-4cec-858c-f48861e9dc21
+
++ Response 200 (application/json)
+
+    + Attributes (Wallet)
+
+
+## User's transactions [/users/me/wallet/transactions]
+
+Get user's transactions.
+
+### GET
+
+Available sorting and filtering fields:
+
+| Field        | Sorting           | Filtering  |
+| :------------- |:-------------:|:-----:|
+|```transaction.transactionDate```| YES | YES |
+|```investment.loan.id```| NO | YES |
+|```investment.id```| NO | YES |
+
++ Request
+
+    + Headers
+
+            Content-Type: application/json
+            Authorization: Bearer 674e7f35-7aba-4cec-858c-f48861e9dc21
+
++ Response 200 (application/json)
+
+    + Attributes (array[WalletTransaction])
+
+
+## User's blocked amounts [/users/me/wallet/blocked-amounts]
+
+Get user's blocked amounts.
+
+### GET
+
+Available sorting and filtering fields:
+
+| Field        | Sorting           | Filtering  |
+| :------------- |:-------------:|:-----:|
+|```id```| YES| NO |
+|```dateStart```| YES | YES |
+|```category```| YES | YES |
+
++ Request
+
+    + Headers
+
+            Content-Type: application/json
+            Authorization: Bearer 674e7f35-7aba-4cec-858c-f48861e9dc21
+
++ Response 200 (application/json)
+
+    + Attributes (array[BlockedAmount])
+
+
+# Group Notifications
+
+## User's notifications [/users/me/notifications]
+
+Get user's notifications. Opened notifications are marked as a read.
+
+### GET
+
+Available types are:
+
+| Type        | Description |
+| :-------------- |:-------------- |
+|```NOOP```|Default type.|
+|```LOAN_APPLIED_NO_ACTIVATE```|Long-time application.|
+|```APPLICATION_APPROVE```|Application was approved.|
+|```APPLICATION_DOCUMENTS```|Documents required to approve an application.|
+|```APPLICATION_DOCUMENTS_SECOND```|Documents required to approve an application (second notification).|
+|```APPLICATION_AGREEMENT```|Print agreement sent to borrower.|
+|```APPLICATION_MARKETPLACE```|Application added to marketplace.|
+|```LOAN_PUBLISHED```|Loan was published.|
+|```LOAN_SEND_MONEY_BORROWER```|Loan is covered and money is being send. This was replaced by ```LOAN_COVERED```|
+|```LOAN_COVERED```|Loan was covered by investors.|
+|```LOAN_QUESTION_SAVE```|Question from chat.|
+|```LOAN_DELAY_BORROWER```|The borrower fell into delinquency.|
+|```LOAN_REPAYMENT_COMPLETED_BORROWER```|Successful repayment of the loan.|
+|```LOAN_DEADLINE_INSTALMENT```|The repayment term is approaching.|
+|```LOAN_DIFFERENT_LAST_INSTALMENT```|Different amounts of the last installment.|
+|```LOAN_PAYMENT_HALF```|Congratulations to repayment of half loan.|
+|```LOAN_ANSWER_SAVE```|The answer to your question.|
+|```LOAN_SUCCESS```|Trading of the investment.|
+|```LOAN_CANCEL```|Non-trading of investments.|
+|```LOAN_UNSIGNED```|To borrower: approved loan is still unsigned.|
+|```WALLET_INCOMING```|Adoption of the money in the wallet.|
+|```LOAN_PREPAYMENT```|Early repayment, extraordinary repayment.|
+|```LOAN_DELAY_INVESTOR```|Loan overdue.|
+|```BORROWER_HEAL```|The borrower has healed.|
+|```REQUEST_INVESTOR_WELCOME```|Investor applied.|
+|```INSTALMENT_PAID```|The instalment was paid.|
+
++ Request
+
+    + Headers
+
+            Content-Type: application/json
+            Authorization: Bearer 674e7f35-7aba-4cec-858c-f48861e9dc21
+
+
++ Response 200
+
+    + Body
+
+        ```json
+        [
+            {
+                "date":"2017-04-20T00:05:55.555+02:00",
+                "visited":false,
+                "text":"Opožděná splátka od Novák právě přistála ve vaší peněžence. ",
+                "link":
+                    {
+                        "type":"BORROWER_HEAL",
+                        "params":
+                            {
+                                "loanId":5555
+                            }
+                    },
+                "id":222222
+            },
+            {
+                "date":"2017-04-19T11:19:42.320+02:00",
+                "visited":false,
+                "text":"Opožděná splátka od zonky1234 právě přistála ve vaší peněžence. ",
+                "link":
+                    {
+                        "type":"BORROWER_HEAL",
+                        "params":
+                            {
+                                "loanId":66666
+                            }
+                    },
+                "id":333333
+            }
+        ]
+        ```
+
+
+# Data Structures
+
+## Loan (object)
+
+- id: 1 (number, required) - ID of the loan
+- url: https://app.zonky.cz/loan/1 (string, optional) - The permalink for the loan
+   The link refers to the official Zonky website with detail of the loan.
+   It is intended to be used by 3rd party applications,
+   which can simply use the obtained link instead of generating a custom one.
+   The main advantage of this link is guarantee that it will be valid in long term.
+- name: Loan refinancing (string, required) - Name of the loan
+- story: Dear investors, ... (string) - Short story of the loan. Usually some story about the purpose of a loan that attracts investors
+- purpose: `REFINANCING` (enum[string], required) - Purpose of the loan
+    - Members
+        - `AUTO_MOTO`
+        - `EDUCATION`
+        - `TRAVEL`
+        - `ELECTRONICS`
+        - `HEALTH`
+        - `REFINANCING`
+        - `HOUSEHOLD`
+        - `OWN_PROJECT`
+        - `OTHER`
+- photos (array[Photo]) - Photos attached to this loan
+- nickName: zonky0 (string, required) - Borrower's nickname
+- termInMonths: 42 (number, required) - Loan term (in months)
+- interestRate: 0.059900 (number, required) - Interest rate for investors
+- revenueRate: 0.049900 (number, required) - revenue rate for investors (loan interest rate - investment fee)
+- annuityWithInsurance: 2543.00 (number, required) - loan annuity including insurance premium (if insured)
+- rating: AAA (string, required) - Rating of the loan
+    Rating is a risk category for the loan determined after scoring
+- topped (boolean, nullable) - true if loan has been topped, false otherwise
+- amount: 200000.00 (number, required) - The amount offered to and accepted by borrower
+- currency: `CZK` (string, required) - Currency code based on ISO-4217
+- remainingInvestment: 152600.00 (number, required) - The remaining amount available for investment, users without a reservation can invest only amount equal to `remainingInvestment - reservedAmount`
+- reservedAmount: 1000.00 (number, required) - The amount reserved for investors with a reservation for given loan, when not zero, users without reservations can invest only amount equal to `remainingInvestment - reservedAmount`
+- investmentRate: 0.237 (number, required) - Current investment rate
+- covered: false (boolean, required) - true if the loan is covered, false otherwise
+- datePublished: `2016-04-19T18:25:41.208+02:00` (string, required) - Date of the loan publication on marketplace
+- published: true (boolean, required) - true if the loan has been published on the marketplace, false otherwise
+- deadline: `2016-04-26T18:23:53.101+02:00` (string, required) - Deadline of the loan
+    Only loans with deadline after actual date and time are visible in the marketplace
+- investmentsCount: 72 (number, required) - The count of investments attached to this loan
+- questionsCount: 3 (number, required) - The count of questions attached to this loan
+- region: 6 (string, required) - The code of the region
+- mainIncomeType: EMPLOYMENT (string, required) - The type of the income that is set as primary
+- insuranceActive: true (boolean,required) - Insurance is active
+- insuranceHistory: InsuranceHistoryItem (array[InsuranceHistoryItem], required) - All insurance intervals
+
+
+## Photo (object)
+
+- name: 6 (string, required) - Name of the photo
+- url: /loans/31959/photos/1987 (string, required) - Relative URL to the photo
+
+## Investment (object)
+
+- id: 1 (number, required) - ID of an investment
+- loanId: 1 (number, required) - ID of a loan related to the investment
+- loanName: New car (string, required) - Loan name
+- investmentDate: `2016-04-19T18:25:41.208+02:00` (string, required) - Date of investment
+- amount: 4000 (number, required) - investment amount
+- currency: `CZK` (string, required) - Currency code based on ISO-4217
+- firstAmount: 2000 (number, required) - investment amount before eventual investment increase
+- purchasePrice: 0 (number) - purchase amount when the investment has been purchased on secondary marketplace
+- interestRate: 0.059900 (number, required) - loan interest rate
+- nickname: Zonky01 (string, required) - borrower's nickname
+- firstName: TestFirstname (string, required) - borrower's firstname
+- surname: TestSurname (string, required) - borrower's surname
+- rating: `AAA` (enum[string], required) - Rating of the loan
+      - Members
+          - `AAAAA`
+          - `AAAA`
+          - `AAA`
+          - `AA`
+          - `A`
+          - `B`
+          - `C`
+          - `D`
+- paid: 100 (number, required) - repaid principal amount
+- toPay: 100 (number, required) - principal amount that is left for repayment
+- nextPaymentDate: `2016-04-19T18:25:41.208+02:00` (string, required) - Due date of the next instalment
+- paymentStatus: `OK` (enum[string], required) - Payment status
+      - Members
+          - `OK`
+          - `DUE`
+          - `COVERED`
+          - `NOT_COVERED`
+          - `PAID_OFF`
+          - `CANCELED`
+          - `WRITTEN_OFF`
+          - `PAID`
+- dpd: 0 (number, required) - number of days after a due date of the oldest unpaid instalment
+- amountDue: 0 (number, required) - total due amount
+- loanTermInMonth: 24 (number, required) - original number of loan instalments (at the time of investment)
+- paidInterest: 134.20 (number, required) - total sum of paid interest
+- dueInterest: 0 (number, required) - total sum of due interest
+- paidPrincipal: 2560.50 (number, required) - total sum of paid principal
+- duePrincipal: 0 (number, required) - total sum of due principal
+- remainingPrincipal: 1439.50 (number, required) - total sum of remaining principal that has not been repaid yet
+- smpSoldFor: 0 (number) - the amount for which the investment has been sold on secondary marketplace (if it has been sold)
+- expectedInterest: 0 (number, required) - total amount of interest that is expected to be received from the investment
+- currentTerm: 0 (number, required) - current number of loan instalments
+- canBeOffered: true (boolean, required) - `true` if an investment can be offered for purchase on the secondary marketplace
+- onSmp: true (boolean, required) - `true` if an investment has been offered for purchase on the secondary marketplace
+- smpRelated: true (boolean, required) - `true` if an investment has been offered for purchase on the secondary marketplace at the current moment or sometimes in the past
+- remainingMonths: 0 (number, required) - number of months left to total repayment
+- status: `ACTIVE` (enum[string], required) - Investment status
+      - Members
+          - `ACTIVE`
+          - `SOLD`
+          - `CANCELLED`
+- timeCreated: `2016-04-19T18:25:41.208+02:00` (string, required) - The date when an investment was created
+- activeTo: `2016-04-19T18:25:41.208+02:00` (string) - The date of sale on a secondary marketplace (if sold)
+- smpFee: 0 (number) - a fee that has been taken for selling an investment on a secondary marketplace (if sold)
+- instalmentPostponement: true (boolean,required) - Instalments are postponed due to insurance event
+- insuranceActive: true (boolean,required) - Insurance is active
+- insuranceHistory: InsuranceHistoryItem (array[InsuranceHistoryItem], required) - All insurance intervals
+
+## InsuranceHistoryItem (object)
+- policyPeriodFrom: `2016-04-18` (string, required)
+- policyPeriodTo: `2016-04-19` (string, required)
+
+## Wallet (object)
+
+- id: 1 (number, required)
+- balance: 1000.00 (number, required)
+- currency: `CZK` (string, required) - Currency code based on ISO-4217
+- availableBalance: 900.00 (number, required)
+- blockedBalance: 100.00 (number, required)
+- creditSum: 20000.00 (number, required)
+- debitSum: 0.00 (number, required)
+- variableSymbol: 0123456789 (string, required)
+- account (BankAccount)
+
+## BankAccount (object)
+
+- id: 1 (number, required)
+- accountNo: 0000000123456789 (string, required)
+- accountBank: 6000 (string, required)
+- accountName: P2P JUMBO (string, required)
+
+## WalletTransaction (object)
+
+- id: 1 (number, required) - ID of a transaction
+- amount: 1000.00 (number, required) - transaction amount
+- currency: `CZK` (string, required) - Currency code based on ISO-4217
+- category: INVESTMENT (enum[string], required) - transaction category
+    - Members
+        - `DEPOSIT` - deposit to investor's wallet
+        - `WITHDRAW` - withdrawal from an investor's wallet to investor's personal bank account
+        - `INVESTMENT` - investment (transfer from investor's wallet to CREDIT account)
+        - `INVESTMENT_RETURN` - return of investment (transfer from yet unknown account to investors' wallets)
+        - `SMP_BUY` - acquisition of an investment on SMP (debit)
+        - `SMP_SELL` - selling of an investment on SMP (credit)
+        - `SMP_PRICE_TRANSFER` - transfer of investment acquisition price from CREDIT to JUMBO (credit & debit)
+        - `SMP_SALE_FEE` - fee for selling an investment (debit)
+        - `CREDIT` - investment (transfer from CREDIT account to borrower's personal bank account)
+        - `PAYMENT` - repayment (transfer from borrower's personal bank account to JUMBO account)
+        - `PAYMENT_REVERT` - revert of payment (debit transaction)
+        - `RESEND` - manual resend (transfer from CREDIT account to JUMBO account)
+        - `RETURN` - return payment or deposit to original bank account (transfer from JUMBO or CREDIT account to personal account)
+        - `CREDIT_FEE` - initial credit fee (transfer from CREDIT account to FEE account)
+        - `CREDIT_FEE_RETURN` - return of initial credit fee in case of loan withdrawal (transfer from FEE account to JUMBO account)
+        - `INVESTMENT_FEE` - fee for investments (transfer from JUMBO account to FEE account)
+        - `INVESTMENT_FEE_RETURN` - return of investment fees (transfer from FEE account to JUMBO account and to investors's wallets)
+        - `COLLECTION_FEE` - commission of collected loans (transfer to FEE account)
+        - `INTEREST` - interest paid by bank
+        - `IGNORE` - ignored transactions (category set manually to specific nonstandard transactions)
+        - `UNSPECIFIED_IN` - unspecified incoming transaction
+        - `UNSPECIFIED_OUT` - unspecified outgoing transaction
+- transactionDate: `2017-08-28T00:00:00.000+02:00` (string, nullable) - date of the transaction
+- customMessage (string, nullable) - a custom message
+- orientation: OUT (enum[string], required) - orientation of the transaction
+    - Members
+        - `IN` - incoming transaction
+        - `OUT` - outgoing transaction
+- investmentId: 1 (number, nullable) - ID of the related investment
+- loanId: 1 (number, nullable) - ID of the related loan
+- loanName: Loan refinancing (string, nullable) - name of the related loan
+- nickName: Zonky01 (string, nullable) - name of the related borrower
+
+## BlockedAmount (object)
+
+- amount: 50.00 (number, required) - transaction amount
+- currency: `CZK` (string, required) - Currency code based on ISO-4217
+- category: INVESTMENT_FEE (enum[string], required) - transaction category
+    - Members
+        - `DEPOSIT` - deposit to investor's wallet
+        - `WITHDRAW` - withdrawal from an investor's wallet to investor's personal bank account
+        - `INVESTMENT` - investment (transfer from investor's wallet to CREDIT account)
+        - `INVESTMENT_RETURN` - return of investment (transfer from yet unknown account to investors' wallets)
+        - `SMP_BUY` - acquisition of an investment on SMP (debit)
+        - `SMP_SELL` - selling of an investment on SMP (credit)
+        - `SMP_PRICE_TRANSFER` - transfer of investment acquisition price from CREDIT to JUMBO (credit & debit)
+        - `SMP_SALE_FEE` - fee for selling an investment (debit)
+        - `CREDIT` - investment (transfer from CREDIT account to borrower's personal bank account)
+        - `PAYMENT` - repayment (transfer from borrower's personal bank account to JUMBO account)
+        - `PAYMENT_REVERT` - revert of payment (debit transaction)
+        - `RESEND` - manual resend (transfer from CREDIT account to JUMBO account)
+        - `RETURN` - return payment or deposit to original bank account (transfer from JUMBO or CREDIT account to personal account)
+        - `CREDIT_FEE` - initial credit fee (transfer from CREDIT account to FEE account)
+        - `CREDIT_FEE_RETURN` - return of initial credit fee in case of loan withdrawal (transfer from FEE account to JUMBO account)
+        - `INVESTMENT_FEE` - fee for investments (transfer from JUMBO account to FEE account)
+        - `INVESTMENT_FEE_RETURN` - return of investment fees (transfer from FEE account to JUMBO account and to investors's wallets)
+        - `COLLECTION_FEE` - commission of collected loans (transfer to FEE account)
+        - `INTEREST` - interest paid by bank
+        - `IGNORE` - ignored transactions (category set manually to specific nonstandard transactions)
+        - `UNSPECIFIED_IN` - unspecified incoming transaction
+        - `UNSPECIFIED_OUT` - unspecified outgoing transaction
+- dateStart: `2017-08-28T00:00:00.000+02:00` (string, nullable) - date of the transaction
+- loanId (number, nullable) - ID of the related loan
+- loanName (string, nullable) - name of the related loan
+
+## SMPInvestment (object)
+
+- id: 1 (number, required) - ID of an investment offer
+- loanId: 1 (number, required) - ID of a related loan
+- userId: 1 (number, required) - ID of an investor offering his investment
+- loanName: Loan refinancing (string, required) - Name of a loan
+- rating: AAA (enum[string], required) - Rating of the loan
+    - Members
+        - `AAAAA`
+        - `AAAA`
+        - `AAA`
+        - `AA`
+        - `A`
+        - `B`
+        - `C`
+        - `D`
+- interestRate: 0.059900 (number, required) - Interest rate for investors
+- remainingInstalmentCount: 12 (number, required) - Number of remaining unpaid instalments
+- currency: `CZK` (string, required) - Currency code based on ISO-4217
+- originalInstalmentCount: 24 (number, required) - Number of instalments at the time when a loan was first published on primary marketplace
+- remainingPrincipal: 11500 (number, required) - Remaining principal is the unreturned part of the whole investment and at the same time it's the amount for which an investment can be purchased
+- nextPaymentDate: `2016-04-19` (string, required) - The due date of the next instalment
+- deadline: `2016-04-19T18:25:41.208+02:00` (string, required) - purchase offer on secondary marketplace will be cancelled after this deadline
+
+## SMPPurchaseRequest (object)
+- amount: 5000 (number, required) - the purchase amount, currently it has to be equal to the total value of investment offered for purchase
+
+## SMPPurchaseError (object)
+
+- error: INSUFFICIENT_BALANCE (enum[string], required)
+    - Members
+        - `INSUFFICIENT_BALANCE`
+        - `ALREADY_HAVE_INVESTMENT`
+- description: Cannot proceed with investment on secondary marketplace due to insufficient wallet balance (string, required)
+
+## SMPPublishingRequest (object)
+- investmentId: 15822 (number, required) - ID of an investment
+- remainingPrincipal: 199.66 (number, required) - current remaining principal
+- feeAmount: 21.98 (number, required) - current fee amount
+
+## SMPPublishingError (object)
+
+- error: PUBLISHING_NOT_ALLOWED (enum[string], required)
+    - Members
+        - `PUBLISHING_NOT_ALLOWED`
+- description: Publishing not allowed
+
+## SMPCancelOfferError (object)
+
+- error: EXPIRED_ON_SMP (enum[string], required) - Error code
+    - Members
+        - `EXPIRED_ON_SMP`
+        - `ALREADY_SOLD`
+- description: The offer has expired (string, required) - Error description
