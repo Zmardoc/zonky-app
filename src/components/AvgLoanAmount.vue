@@ -1,6 +1,6 @@
 <template>
   <div class="loanContainer">
-    Průmerná výše {{ loanAmount }}
+    Průměrná výše {{ loanAmount }}
     {{ loanAmount === 1 ? "půjčky" : "půjček" }} činí&nbsp;
     <vue-numeric
       read-only-class="importantNumber"

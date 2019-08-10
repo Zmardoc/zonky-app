@@ -1,5 +1,13 @@
 # zonky-app
-Aplikace používá mockovaná data z marketplace, na opravě se pracuje...
+Aplikace používá z marketplace, avšak je nutné mít v prohlížeči CORS povoleny:
+
+## Nastavení chromu bez cors
+* Vytvořit zástupce
+* Do cesty zkopírovat (nahradit cestu CHROME_FILE_PATH ):
+```
+  "[CHROME_FILE_PATH]" --disable-web-security --disable-gpu --user-data-dir=~/chromeTemp
+```
+* Vypnout Chrome a spustit přes nového zástupce
 
 ## Project setup
 ```
