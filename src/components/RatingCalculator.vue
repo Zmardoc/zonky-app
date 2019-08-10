@@ -8,6 +8,7 @@
       <RatingSelector
         :allRatings="allRatings"
         @selectedRating="computeAvgLoan"
+        :err="err"
       />
       <AvgLoanAmount :avgLoan="avgLoan" :loanAmount="filteredLoans.length" />
     </md-card-content>
@@ -28,10 +29,12 @@ export default {
     marketplace: [],
     allRatings: [],
     filteredLoans: [],
-    avgLoan: 0
+    avgLoan: 0,
+    err: false
   }),
   created() {
     //TODO cors vypnuty v prohlížeči, nutno implementovat crossorigin.me (zatím nefunguje)
+    this.err = false;
     this.axios
       .get(`${process.env.VUE_APP_API}/loans/marketplace`)
       .then(res => {
@@ -40,6 +43,7 @@ export default {
       .catch(error => {
         console.error(error);
         this.marketplace = MockMarketPlace.MARKETPLACE;
+        this.err = true;
       })
       .finally(() => {
         this.allRatings = [
