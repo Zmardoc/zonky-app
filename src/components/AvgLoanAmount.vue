@@ -8,7 +8,7 @@
       separator="space"
       v-model="avgLoan"
       currency-symbol-position="suffix"
-      precision="2"
+      :precision="2"
       read-only
     ></vue-numeric>
   </div>
