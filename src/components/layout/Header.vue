@@ -1,7 +1,7 @@
 <template>
   <nav>
     <img alt="Zonky.cz logo" src="../../assets/logo.svg" class="logo" />
-    <div class="build">[Last build : {{ version }}]</div>
+    <div class="build">[v{{ version }}]</div>
   </nav>
 </template>
 

@@ -1,4 +1,5 @@
 # zonky-app
+Aplikace používá mockovaná data z marketplace, na opravě se pracuje...
 
 ## Project setup
 ```

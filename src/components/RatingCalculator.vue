@@ -15,8 +15,8 @@
 </template>
 <script>
 import RatingSelector from "./RatingSelector";
-import MockMarketPlace from "../mocks/OfflineMarketplace"; //TODO vyřešit cors
-import AvgLoanAmount from "./AvgLoanAmount"; //TODO vyřešit cors
+//import MockMarketPlace from "../mocks/OfflineMarketplace";
+import AvgLoanAmount from "./AvgLoanAmount";
 
 export default {
   name: "RatingCalculator",
@@ -31,11 +31,23 @@ export default {
     avgLoan: 0
   }),
   created() {
+    //TODO cors vypnuty v prohlížeči, nutno implementovat crossorigin.me (zatím nefunguje)
+    this.axios
+      .get(`${process.env.VUE_APP_API}/loans/marketplace`)
+      .then(res => {
+        this.marketplace = res.data;
+        this.allRatings = [
+          ...new Set(this.marketplace.map(item => item.rating))
+        ].sort();
+      })
+      .catch(error => {
+        console.error(error);
+      });
+    /*
     this.marketplace = MockMarketPlace.MARKETPLACE;
     this.allRatings = [
       ...new Set(this.marketplace.map(item => item.rating))
-    ].sort();
-    //this.computeAvgLoan(allRatings[0]);
+    ].sort();*/
   },
   methods: {
     computeAvgLoan(currentRate) {
