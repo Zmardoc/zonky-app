@@ -73,9 +73,8 @@ export default {
   .title {
     font-family: Borden, Roboto, sans-serif;
     font-size: 35px;
-    text-align: left !important;
+    text-align: left;
     font-weight: 400;
-    text-align: center;
     color: #37b4be;
   }
 }

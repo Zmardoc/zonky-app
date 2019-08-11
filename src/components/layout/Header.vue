@@ -34,5 +34,7 @@ nav {
   }
   height: 41px;
   background-color: #37b4be;
+  -webkit-box-shadow: 0 3px 5px -3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 5px -3px rgba(0, 0, 0, 0.3);
 }
 </style>
