@@ -35,8 +35,11 @@ export default {
   created() {
     //TODO cors vypnuty v prohlížeči, nutno implementovat crossorigin.me (zatím nefunguje)
     this.err = false;
+    this.axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
     this.axios
-      .get(`${process.env.VUE_APP_API}/loans/marketplace`)
+      .get(
+        `https://cors-anywhere.herokuapp.com/${process.env.VUE_APP_API}loans/marketplace`
+      )
       .then(res => {
         this.marketplace = res.data;
       })
